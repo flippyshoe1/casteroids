@@ -1,0 +1,93 @@
+#include "vector2.h"
+
+#include <raylib.h>
+
+#include <math.h>
+#include <stdio.h> 
+#include <stdlib.h>
+
+#define SHIP_RAD 16
+#define RSPEED 5
+#define DEBUG_AMP 20
+#define DEBUG_FPS 60
+#define SPEED_LIM 5
+#define THRUST_AMP 15
+
+typedef struct Ship {
+  Vector2 position;
+  Vector2 velocity;
+  Vector2 acceleration;
+  float rotation;
+} Ship;
+
+void // debug function
+dShip_Draw(Ship *s){
+  // circle dictates the ship itself
+  DrawCircle(s->position.x, s->position.y, SHIP_RAD, DARKGRAY);
+  // red line shows the velocity of the ship
+  Vector2 vel = Vector2_SMul(s->velocity, DEBUG_AMP);
+  DrawLine(s->position.x, s->position.y,
+	   s->position.x+vel.x, s->position.y+vel.y,
+	   RED);
+  // green shows acceleration
+  Vector2 acc = Vector2_SMul(s->acceleration, DEBUG_AMP);
+  DrawLine(s->position.x, s->position.y,
+	   s->position.x+acc.x, s->position.y+acc.y,
+	   GREEN);
+  // blue shows rotation
+  Vector2 rot = Vector2_FromPolar(2*DEBUG_AMP, s->rotation);
+  DrawLine(s->position.x, s->position.y,
+	   s->position.x+rot.x, s->position.y+rot.y,
+	   BLUE);
+}
+
+int main(){
+  /* initialisation */  
+  // window constants
+  const Vector2 screens = (Vector2){800, 450};
+
+  Ship player;
+  player.position = (Vector2){screens.x/2, screens.y/2};
+  
+  // start the window, set fps with raylib (convenient!)
+  InitWindow(screens.x, screens.y, "Hello world... right?");
+  SetTargetFPS(DEBUG_FPS);
+
+  /* window loop */  
+  while(!WindowShouldClose()){
+    /* input */
+    if(IsKeyDown(KEY_RIGHT)) { player.rotation += RSPEED; }
+    if(IsKeyDown(KEY_LEFT))  { player.rotation -= RSPEED; }
+
+    if(IsKeyDown(KEY_UP))    player.acceleration.y = THRUST_AMP;
+    else                     player.acceleration.y = 0;
+    
+    /* logic */
+    // get deltatime
+    float delta = GetFrameTime();
+
+    // calculate player velocity, add it to the player
+    Vector2 acc = Vector2_SMul(player.acceleration, delta);
+    acc = Vector2_FromPolar(acc.y, player.rotation);
+    player.velocity = Vector2_Add(player.velocity, acc);
+    // cheap out and only use the Y portion of velocity, thats the only thing we care abt anyways
+    //player.velocity = Vector2_Clamp(player.velocity, (Vector2){SPEED_LIM, 0});
+    player.velocity = Vector2_LimitLength(player.velocity, SPEED_LIM);
+    player.position = Vector2_Add(player.velocity, player.position);
+
+    Vector2_Wrap(&player.position, screens);
+    
+    /* drawing */
+    BeginDrawing();
+
+    ClearBackground(RAYWHITE);
+    dShip_Draw(&player);
+
+    EndDrawing();
+  }
+
+  /* de-initialisation */
+  CloseWindow();
+  return 0;
+}
+
